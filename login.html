@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Login – Campus Issue Tracker</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+  <div class="auth-wrapper">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <div class="icon">🎓</div>
+        <span>Campus Issue Tracker<small>Student Portal</small></span>
+      </div>
+      <h2>Welcome Back</h2>
+      <p class="subtitle">Login to report or track campus issues</p>
+
+      <div class="error-msg" id="errMsg"></div>
+
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="you@college.edu"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Your password"/>
+      </div>
+
+      <button class="btn btn-primary" onclick="login()">Login</button>
+
+      <div class="auth-footer">
+        Don't have an account? <a href="/student/register.html">Register here</a><br/>
+        <br/><a href="/">← Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const err = document.getElementById('errMsg');
+      err.style.display = 'none';
+
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+
+      if (data.success && data.role === 'student') {
+        window.location.href = '/student/dashboard.html';
+      } else if (data.success) {
+        err.textContent = 'This account is not a student account.';
+        err.style.display = 'block';
+      } else {
+        err.textContent = data.error || 'Login failed.';
+        err.style.display = 'block';
+      }
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Student Dashboard – Campus Issue Tracker</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+  <div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <div class="icon">🏫</div>
+        <span>Issue Tracker<small>Student Portal</small></span>
+      </div>
+      <div class="nav-label">Menu</div>
+      <button class="nav-item active" onclick="showTab('report')">
+        <span class="nav-icon">📝</span> Report Issue
+      </button>
+      <button class="nav-item" onclick="showTab('myissues')">
+        <span class="nav-icon">📋</span> My Issues
+      </button>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="user-avatar" id="avatarLetter">?</div>
+          <div class="user-info">
+            <div class="uname" id="userName">Loading...</div>
+            <div class="urole">Student</div>
+          </div>
+          <button class="logout-btn" onclick="logout()" title="Logout">⏻</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main">
+      <!-- REPORT ISSUE TAB -->
+      <div id="tab-report">
+        <div class="page-header">
+          <h1>Report an Issue</h1>
+          <p>Describe the campus problem so it can be resolved quickly</p>
+        </div>
+
+        <div class="card" style="max-width:600px">
+          <div class="error-msg" id="reportErr"></div>
+          <div class="success-msg" id="reportSuc"></div>
+
+          <div class="form-group">
+            <label>Issue Title</label>
+            <input type="text" id="title" placeholder="e.g. Broken light in Lab 3"/>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select id="category">
+              <option value="">-- Select Category --</option>
+              <option value="Electrical">💡 Electrical (Lights, Fans, Switches)</option>
+              <option value="Cleanliness">🧹 Cleanliness</option>
+              <option value="Plumbing">💧 Water / Plumbing</option>
+              <option value="Classroom Equipment">🖥️ Classroom Equipment</option>
+              <option value="Infrastructure">🏗️ Infrastructure / Civil</option>
+              <option value="Other">📌 Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Location</label>
+            <input type="text" id="location" placeholder="e.g. Block B, Room 204"/>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="description" placeholder="Describe the issue in detail..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="submitIssue()">🚀 Submit Issue</button>
+        </div>
+      </div>
+
+      <!-- MY ISSUES TAB -->
+      <div id="tab-myissues" style="display:none">
+        <div class="page-header">
+          <h1>My Reported Issues</h1>
+          <p>Track the status of all your submitted issues</p>
+        </div>
+
+        <div class="stats-row" id="statsRow"></div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>All Issues</h3>
+            <button class="btn btn-outline btn-sm" onclick="loadMyIssues()">↻ Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Location</th>
+                  <th>Status</th>
+                  <th>Assigned To</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody id="issuesBody"></tbody>
+            </table>
+          </div>
+          <div id="emptyState" class="empty-state" style="display:none">
+            <div class="empty-icon">📭</div>
+            <p>No issues submitted yet. Report your first issue!</p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let user = null;
+
+    async function init() {
+      const res = await fetch('/api/me');
+      if (!res.ok) { window.location.href = '/student/login.html'; return; }
+      user = await res.json();
+      if (user.role !== 'student') { window.location.href = '/'; return; }
+      document.getElementById('userName').textContent = user.name;
+      document.getElementById('avatarLetter').textContent = user.name[0].toUpperCase();
+    }
+
+    function showTab(tab) {
+      document.getElementById('tab-report').style.display = tab === 'report' ? 'block' : 'none';
+      document.getElementById('tab-myissues').style.display = tab === 'myissues' ? 'block' : 'none';
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      event.target.closest('.nav-item').classList.add('active');
+      if (tab === 'myissues') loadMyIssues();
+    }
+
+    async function submitIssue() {
+      const title = document.getElementById('title').value.trim();
+      const category = document.getElementById('category').value;
+      const location = document.getElementById('location').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const err = document.getElementById('reportErr');
+      const suc = document.getElementById('reportSuc');
+      err.style.display = 'none'; suc.style.display = 'none';
+
+      if (!title || !category || !location || !description) {
+        err.textContent = 'Please fill in all fields.';
+        err.style.display = 'block'; return;
+      }
+
+      const res = await fetch('/api/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, category, location, description })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        suc.textContent = '✅ Issue submitted successfully! Admin will review it soon.';
+        suc.style.display = 'block';
+        document.getElementById('title').value = '';
+        document.getElementById('category').value = '';
+        document.getElementById('location').value = '';
+        document.getElementById('description').value = '';
+      } else {
+        err.textContent = data.error || 'Failed to submit.';
+        err.style.display = 'block';
+      }
+    }
+
+    async function loadMyIssues() {
+      const res = await fetch('/api/issues/mine');
+      const issues = await res.json();
+      const tbody = document.getElementById('issuesBody');
+      const empty = document.getElementById('emptyState');
+
+      if (!issues.length) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        document.getElementById('statsRow').innerHTML = '';
+        return;
+      }
+
+      empty.style.display = 'none';
+
+      const counts = { Pending: 0, 'In Progress': 0, Resolved: 0 };
+      issues.forEach(i => counts[i.status]++);
+
+      document.getElementById('statsRow').innerHTML = `
+        <div class="stat-card s-total"><div class="stat-label">Total</div><div class="stat-value">${issues.length}</div></div>
+        <div class="stat-card s-pending"><div class="stat-label">Pending</div><div class="stat-value">${counts['Pending']}</div></div>
+        <div class="stat-card s-progress"><div class="stat-label">In Progress</div><div class="stat-value">${counts['In Progress']}</div></div>
+        <div class="stat-card s-resolved"><div class="stat-label">Resolved</div><div class="stat-value">${counts['Resolved']}</div></div>
+      `;
+
+      tbody.innerHTML = issues.map((issue, i) => `
+        <tr>
+          <td style="color:var(--muted)">${i + 1}</td>
+          <td><strong>${issue.title}</strong><br/><small style="color:var(--muted)">${issue.description.substring(0,50)}${issue.description.length>50?'...':''}</small></td>
+          <td><span class="cat-badge">${issue.category}</span></td>
+          <td style="color:var(--muted)">${issue.location}</td>
+          <td>${statusBadge(issue.status)}</td>
+          <td style="color:var(--muted)">${issue.assigned_name || '—'}</td>
+          <td style="color:var(--muted);font-size:12px">${new Date(issue.created_at).toLocaleDateString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    function statusBadge(status) {
+      const map = { 'Pending': 'badge-pending', 'In Progress': 'badge-progress', 'Resolved': 'badge-resolved' };
+      const icons = { 'Pending': '⏳', 'In Progress': '⚙️', 'Resolved': '✅' };
+      return `<span class="badge ${map[status]}">${icons[status]} ${status}</span>`;
+    }
+
+    async function logout() {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = '/student/login.html';
+    }
+
+    init();
+  </script>
+</body>
+</html>

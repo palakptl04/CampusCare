@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Staff Dashboard — CampusCare</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🏫</div>
+      <div class="brand-text">
+        <strong>CampusCare</strong>
+        <span>Staff Panel</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">My Issues</div>
+      <button class="nav-item active" onclick="setFilter('all', this)">
+        <span class="nav-icon">📋</span> All Assigned
+      </button>
+      <button class="nav-item" onclick="setFilter('In Progress', this)">
+        <span class="nav-icon">◐</span> In Progress
+      </button>
+      <button class="nav-item" onclick="setFilter('Resolved', this)">
+        <span class="nav-icon">✓</span> Resolved
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="profilePopup" class="profile-popup">
+        <div class="popup-user-info">
+          <div class="pu-name"  id="popupName">—</div>
+          <div class="pu-email" id="popupEmail">—</div>
+        </div>
+        <button class="popup-item danger" onclick="logout()">Logout</button>
+      </div>
+      <button class="profile-btn" id="profileBtn">
+        <div class="avatar" id="avatarLetter">S</div>
+        <div class="profile-info">
+          <div class="p-name" id="userName">Staff</div>
+          <div class="p-role">Maintenance</div>
+        </div>
+        <span class="profile-chevron">▲</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="page-header">
+      <h1>My Assigned Issues</h1>
+      <p>Update the status of issues assigned to you</p>
+    </div>
+
+    <div class="stats-row" id="statsRow"></div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3 id="tableTitle">All Assigned Issues</h3>
+        <button class="btn btn-outline btn-sm" onclick="loadIssues()">↻ Refresh</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Issue</th>
+              <th>Category</th>
+              <th>Location</th>
+              <th>Reported By</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="issuesBody"></tbody>
+        </table>
+      </div>
+      <div id="emptyState" class="empty-state" style="display:none">
+        <div class="e-icon">🎉</div>
+        <p>No issues assigned to you yet.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Status Modal -->
+<div class="modal-overlay" id="statusModal">
+  <div class="modal">
+    <h3>Update Issue Status</h3>
+    <p class="modal-sub" id="modalTitle"></p>
+    <div class="form-group">
+      <label>New Status</label>
+      <select id="newStatus" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;width:100%;outline:none">
+        <option value="In Progress">In Progress</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-green"   onclick="confirmUpdate()">Update Status</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/js/common.js"></script>
+<script>
+let allIssues = [], currentFilter = 'all', updatingId = null;
+
+async function init() {
+  const res = await fetch('/api/me');
+  if (!res.ok) { window.location.href = '/maintenance/login.html'; return; }
+  const user = await res.json();
+  if (user.role !== 'maintenance') { window.location.href = '/'; return; }
+  document.getElementById('userName').textContent     = user.name;
+  document.getElementById('avatarLetter').textContent = user.name[0].toUpperCase();
+  document.getElementById('popupName').textContent    = user.name;
+  document.getElementById('popupEmail').textContent   = user.email;
+  initProfilePopup();
+  await loadIssues();
+}
+
+async function loadIssues() {
+  const res = await fetch('/api/issues/assigned');
+  allIssues = await res.json();
+  renderStats(); renderTable();
+}
+
+function renderStats() {
+  const inP = allIssues.filter(i => i.status === 'In Progress').length;
+  const res = allIssues.filter(i => i.status === 'Resolved').length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card s-total">   <div class="s-label">Total Assigned</div><div class="s-value">${allIssues.length}</div></div>
+    <div class="stat-card s-progress"><div class="s-label">In Progress</div>   <div class="s-value">${inP}</div></div>
+    <div class="stat-card s-resolved"><div class="s-label">Resolved</div>      <div class="s-value">${res}</div></div>
+  `;
+}
+
+function renderTable() {
+  const filtered = currentFilter === 'all' ? allIssues : allIssues.filter(i => i.status === currentFilter);
+  const tbody = document.getElementById('issuesBody');
+  const empty = document.getElementById('emptyState');
+
+  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map((issue, idx) => `
+    <tr>
+      <td style="color:var(--muted);font-size:12px">${idx + 1}</td>
+      <td>
+        <div style="font-weight:600">${issue.title}</div>
+        <div style="color:var(--muted);font-size:11.5px;margin-top:3px">${issue.description.substring(0, 50)}${issue.description.length > 50 ? '…' : ''}</div>
+      </td>
+      <td><span class="cat-tag">${issue.category_name || issue.category}</span></td>
+      <td style="color:var(--muted2)">${issue.location}</td>
+      <td style="color:var(--muted2)">${issue.student_name}</td>
+      <td>${statusBadge(issue.status)}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(issue.created_at)}</td>
+      <td>
+        ${issue.status !== 'Resolved'
+          ? `<button class="btn btn-sm btn-green" onclick="openUpdate(${issue.id},'${issue.title.replace(/'/g, "\\'")}','${issue.status}')">Update</button>`
+          : '<span style="color:var(--green);font-size:12px;font-weight:600">✓ Done</span>'
+        }
+      </td>
+    </tr>
+  `).join('');
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  const titles = { all: 'All Assigned Issues', 'In Progress': 'In Progress', Resolved: 'Resolved Issues' };
+  document.getElementById('tableTitle').textContent = titles[filter] || 'Issues';
+  renderTable();
+}
+
+function openUpdate(id, title, status) {
+  updatingId = id;
+  document.getElementById('modalTitle').textContent = `Issue: ${title}`;
+  document.getElementById('newStatus').value = status === 'In Progress' ? 'Resolved' : 'In Progress';
+  document.getElementById('statusModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('statusModal').classList.remove('open');
+  updatingId = null;
+}
+
+async function confirmUpdate() {
+  const status = document.getElementById('newStatus').value;
+  const res  = await fetch(`/api/issues/${updatingId}/status`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  const data = await res.json();
+  if (data.success) {
+    closeModal();
+    showToast(status === 'Resolved' ? 'Issue marked as resolved!' : 'Status updated!');
+    await loadIssues();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Portal Login – CampusCare</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+  <style>
+    .auth-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: linear-gradient(135deg, #f0fdfa 0%, #f0fafa 60%, #ecfdf5 100%);
+    }
+    .auth-card {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 36px;
+      box-shadow: 0 8px 40px rgba(13,148,136,0.13), 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .brand-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+    }
+    .brand-icon-wrap {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: var(--teal);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 4px 12px rgba(13,148,136,0.28);
+      flex-shrink: 0;
+    }
+    .brand-name { font-size: 17px; font-weight: 700; color: var(--text); }
+    .brand-sub  { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .divider-line {
+      border: none; border-top: 1px solid var(--border-soft); margin: 0 0 26px;
+    }
+    .auth-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+    .auth-sub   { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+    .field-label {
+      display: block; font-size: 11.5px; font-weight: 600;
+      color: var(--text2); text-transform: uppercase;
+      letter-spacing: 0.04em; margin-bottom: 6px;
+    }
+    .field-input {
+      width: 100%; border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 11px 14px;
+      font-family: 'Poppins', sans-serif; font-size: 14px;
+      color: var(--text); background: #fff; outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s;
+      margin-bottom: 14px;
+    }
+    .field-input:focus {
+      border-color: var(--teal);
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.12);
+    }
+    .field-input::placeholder { color: var(--muted); }
+    .login-btn {
+      width: 100%; padding: 12px; border: none; border-radius: 10px;
+      background: var(--teal); color: #fff;
+      font-family: 'Poppins', sans-serif; font-weight: 600; font-size: 15px;
+      cursor: pointer; margin-top: 6px;
+      box-shadow: 0 4px 14px rgba(13,148,136,0.3);
+      transition: all 0.18s;
+    }
+    .login-btn:hover {
+      background: var(--teal-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(13,148,136,0.38);
+    }
+    .err-box {
+      background: #fee2e2; border: 1px solid #fca5a5;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; color: #991b1b;
+      margin-bottom: 14px; display: none; font-weight: 500;
+    }
+    .footer-note {
+      text-align: center; margin-top: 22px;
+      font-size: 13px; color: var(--text2);
+    }
+    .footer-note a { color: var(--teal); font-weight: 500; }
+    .role-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--teal-soft); color: var(--teal);
+      border: 1px solid var(--teal-mid);
+      border-radius: 20px; padding: 3px 12px;
+      font-size: 12px; font-weight: 600;
+      margin-bottom: 18px;
+    }
+  </style>
+</head>
+<body>
+<div class="auth-wrapper">
+  <div class="auth-card">
+    <div class="brand-row">
+      <div class="brand-icon-wrap">🛡️</div>
+      <div>
+        <div class="brand-name">CampusCare</div>
+        <div class="brand-sub">Admin Portal</div>
+      </div>
+    </div>
+    <hr class="divider-line"/>
+    <div class="role-chip">🛡️ Admin Portal</div>
+    <div class="auth-title">Admin Login</div>
+    <div class="auth-sub">Manage issues, staff, and departments.</div>
+    <div class="err-box" id="errMsg"></div>
+    <label class="field-label">Email Address</label>
+    <input class="field-input" type="email" id="email" placeholder="Enter your email" value=""/>
+    <label class="field-label">Password</label>
+    <input class="field-input" type="password" id="password" placeholder="Enter your password" value=""/>
+    <button class="login-btn" onclick="login()">Login →</button>
+    <div class="footer-note"><a href="/">← Back to Home</a></div>
+  </div>
+</div>
+<script>
+async function login() {
+  const email=document.getElementById('email').value.trim();
+  const password=document.getElementById('password').value;
+  const err=document.getElementById('errMsg'); err.style.display='none';
+  const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  const data=await res.json();
+  if (data.success && data.role==='admin') { window.location.href='/admin/dashboard.html'; }
+  else if (data.success) { err.textContent='This account does not have Admin Portal access.'; err.style.display='block'; }
+  else { err.textContent=data.error||'Login failed. Please check your credentials.'; err.style.display='block'; }
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Enter') login(); });
+</script>
+</body>
+</html>

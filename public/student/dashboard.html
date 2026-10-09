@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — CampusCare</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🏫</div>
+      <div class="brand-text">
+        <strong>CampusCare</strong>
+        <span>Student Portal</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Menu</div>
+      <button class="nav-item active" id="navReport" onclick="showTab('report', this)">
+        <span class="nav-icon">📝</span> Report Issue
+      </button>
+      <button class="nav-item" id="navMine" onclick="showTab('mine', this)">
+        <span class="nav-icon">📋</span> My Issues
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="profilePopup" class="profile-popup">
+        <div class="popup-user-info">
+          <div class="pu-name"  id="popupName">—</div>
+          <div class="pu-email" id="popupEmail">—</div>
+        </div>
+        <button class="popup-item danger" onclick="logout()">Logout</button>
+      </div>
+      <button class="profile-btn" id="profileBtn">
+        <div class="avatar" id="avatarLetter">?</div>
+        <div class="profile-info">
+          <div class="p-name" id="userName">Loading…</div>
+          <div class="p-role">Student</div>
+        </div>
+        <span class="profile-chevron">▲</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- REPORT TAB -->
+    <div id="tab-report">
+      <div class="page-header">
+        <h1>Report an Issue</h1>
+        <p>Describe the campus problem so it can be resolved quickly</p>
+      </div>
+      <div class="card" style="max-width:580px">
+        <div class="alert alert-error"   id="repErr"></div>
+        <div class="alert alert-success" id="repSuc"></div>
+        <div class="form-group">
+          <label>Issue Title</label>
+          <input type="text" id="title" placeholder="e.g. Broken light in Lab 3"/>
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select id="category_id">
+            <option value="">— Select Category —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" id="location" placeholder="e.g. Block B, Room 204"/>
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea id="description" placeholder="Describe the issue in detail…"></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="submitIssue()">Submit Issue</button>
+      </div>
+    </div>
+
+    <!-- MY ISSUES TAB -->
+    <div id="tab-mine" style="display:none">
+      <div class="page-header">
+        <h1>My Reported Issues</h1>
+        <p>Track the current status of all your submissions</p>
+      </div>
+      <div class="stats-row" id="statsRow"></div>
+      <div class="card">
+        <div class="card-header">
+          <h3>All Issues</h3>
+          <button class="btn btn-outline btn-sm" onclick="loadMyIssues()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+                <th>Department</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="issuesBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyState" class="empty-state" style="display:none">
+          <div class="e-icon">📭</div>
+          <p>No issues submitted yet.<br/>Use the Report tab to submit one.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/js/common.js"></script>
+<script>
+let user = null;
+
+async function init() {
+  const res = await fetch('/api/me');
+  if (!res.ok) { window.location.href = '/student/login.html'; return; }
+  user = await res.json();
+  if (user.role !== 'student') { window.location.href = '/'; return; }
+  document.getElementById('userName').textContent     = user.name;
+  document.getElementById('avatarLetter').textContent = user.name[0].toUpperCase();
+  document.getElementById('popupName').textContent    = user.name;
+  document.getElementById('popupEmail').textContent   = user.email;
+  initProfilePopup();
+  await loadCategories();
+}
+
+async function loadCategories() {
+  const res  = await fetch('/api/categories');
+  const cats = await res.json();
+  const sel  = document.getElementById('category_id');
+  cats.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id; opt.textContent = c.name;
+    sel.appendChild(opt);
+  });
+}
+
+function showTab(tab, el) {
+  document.getElementById('tab-report').style.display = tab === 'report' ? 'block' : 'none';
+  document.getElementById('tab-mine').style.display   = tab === 'mine'   ? 'block' : 'none';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  if (tab === 'mine') loadMyIssues();
+}
+
+async function submitIssue() {
+  const title       = document.getElementById('title').value.trim();
+  const category_id = document.getElementById('category_id').value;
+  const location    = document.getElementById('location').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const err = document.getElementById('repErr');
+  const suc = document.getElementById('repSuc');
+  err.style.display = 'none'; suc.style.display = 'none';
+
+  if (!title || !category_id || !location || !description) {
+    err.textContent = 'Please fill in all fields.'; err.style.display = 'block'; return;
+  }
+
+  const res  = await fetch('/api/issues', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, category_id, location, description })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    suc.textContent = 'Issue submitted! Admin will review it soon.';
+    suc.style.display = 'block';
+    document.getElementById('title').value       = '';
+    document.getElementById('category_id').value = '';
+    document.getElementById('location').value    = '';
+    document.getElementById('description').value = '';
+  } else {
+    err.textContent = data.error || 'Failed to submit.'; err.style.display = 'block';
+  }
+}
+
+async function loadMyIssues() {
+  const res    = await fetch('/api/issues/mine');
+  const issues = await res.json();
+  const tbody  = document.getElementById('issuesBody');
+  const empty  = document.getElementById('emptyState');
+
+  if (!issues.length) {
+    tbody.innerHTML = ''; empty.style.display = 'block';
+    document.getElementById('statsRow').innerHTML = ''; return;
+  }
+
+  empty.style.display = 'none';
+  const c = { Pending: 0, 'In Progress': 0, Resolved: 0 };
+  issues.forEach(i => c[i.status] !== undefined && c[i.status]++);
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card s-total">   <div class="s-label">Total</div>      <div class="s-value">${issues.length}</div></div>
+    <div class="stat-card s-pending"> <div class="s-label">Pending</div>    <div class="s-value">${c['Pending']}</div></div>
+    <div class="stat-card s-progress"><div class="s-label">In Progress</div><div class="s-value">${c['In Progress']}</div></div>
+    <div class="stat-card s-resolved"><div class="s-label">Resolved</div>   <div class="s-value">${c['Resolved']}</div></div>
+  `;
+
+  tbody.innerHTML = issues.map((issue, i) => `
+    <tr>
+      <td style="color:var(--muted);font-size:12px">${i + 1}</td>
+      <td>
+        <div style="font-weight:600">${issue.title}</div>
+        <div style="color:var(--muted);font-size:11.5px;margin-top:3px">${issue.description.substring(0, 50)}${issue.description.length > 50 ? '…' : ''}</div>
+      </td>
+      <td><span class="cat-tag">${issue.category_name}</span></td>
+      <td style="color:var(--muted2)">${issue.location}</td>
+      <td>${statusBadge(issue.status)}</td>
+      <td style="color:var(--muted2)">${issue.assigned_name || '—'}</td>
+      <td style="color:var(--muted2)">${issue.dept_name || '—'}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(issue.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+init();
+</script>
+</body>
+</html>

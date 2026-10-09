@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard — CampusCare</title>
+  <link rel="stylesheet" href="/css/style.css"/>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-icon">🏫</div>
+      <div class="brand-text">
+        <strong>CampusCare</strong>
+        <span>Admin Panel</span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Issues</div>
+      <button class="nav-item active" onclick="setFilter('all', this)">
+        <span class="nav-icon">📋</span> All Issues
+      </button>
+      <button class="nav-item" onclick="setFilter('Pending', this)">
+        <span class="nav-icon">●</span> Pending
+      </button>
+      <button class="nav-item" onclick="setFilter('In Progress', this)">
+        <span class="nav-icon">◐</span> In Progress
+      </button>
+      <button class="nav-item" onclick="setFilter('Resolved', this)">
+        <span class="nav-icon">✓</span> Resolved
+      </button>
+      <hr class="divider"/>
+      <div class="nav-section-label">Management</div>
+      <button class="nav-item" onclick="showStaffView(this)">
+        <span class="nav-icon">👥</span> Manage Staff
+      </button>
+      <button class="nav-item" onclick="showDeptView(this)">
+        <span class="nav-icon">🏢</span> Departments
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <div id="profilePopup" class="profile-popup">
+        <div class="popup-user-info">
+          <div class="pu-name"  id="popupName">—</div>
+          <div class="pu-email" id="popupEmail">—</div>
+        </div>
+        <button class="popup-item danger" onclick="logout()">Logout</button>
+      </div>
+      <button class="profile-btn" id="profileBtn">
+        <div class="avatar">A</div>
+        <div class="profile-info">
+          <div class="p-name" id="userName">Admin</div>
+          <div class="p-role">Administrator</div>
+        </div>
+        <span class="profile-chevron">▲</span>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <!-- ISSUES VIEW -->
+    <div id="view-issues">
+      <div class="page-header">
+        <h1>Issue Management</h1>
+        <p>View all reported issues and assign responsibility to maintenance staff</p>
+      </div>
+      <div class="stats-row" id="statsRow"></div>
+      <div class="card">
+        <div class="card-header">
+          <h3 id="tableTitle">All Issues</h3>
+          <button class="btn btn-outline btn-sm" onclick="loadIssues()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Issue</th>
+                <th>Category</th>
+                <th>Location</th>
+                <th>Student</th>
+                <th>Status</th>
+                <th>Assigned To</th>
+                <th>Department</th>
+                <th>Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="issuesBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyIssues" class="empty-state" style="display:none">
+          <div class="e-icon">📭</div><p>No issues found.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAFF VIEW -->
+    <div id="view-staff" style="display:none">
+      <div class="page-header">
+        <h1>Maintenance Staff</h1>
+        <p>Add staff accounts and assign them to departments</p>
+      </div>
+      <div class="card" style="max-width:540px;margin-bottom:22px">
+        <div class="card-header"><h3>Add New Staff Member</h3></div>
+        <div class="alert alert-error"   id="staffErr"></div>
+        <div class="alert alert-success" id="staffSuc"></div>
+        <div class="form-group"><label>Full Name</label><input type="text" id="sName" placeholder="Staff member name"/></div>
+        <div class="form-group"><label>Email</label><input type="email" id="sEmail" placeholder="staff@campus.com"/></div>
+        <div class="form-group"><label>Password</label><input type="password" id="sPass" placeholder="Set a password"/></div>
+        <div class="form-group">
+          <label>Department</label>
+          <select id="sDept"><option value="">— Select Department —</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="addStaff()">Add Staff Member</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>All Maintenance Staff</h3>
+          <button class="btn btn-outline btn-sm" onclick="loadStaff()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Department</th><th>Change Dept</th><th>Joined</th></tr></thead>
+            <tbody id="staffBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyStaff" class="empty-state" style="display:none">
+          <div class="e-icon">👤</div><p>No maintenance staff added yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEPARTMENTS VIEW -->
+    <div id="view-dept" style="display:none">
+      <div class="page-header">
+        <h1>Departments</h1>
+        <p>Add and manage campus departments</p>
+      </div>
+      <div class="card" style="max-width:480px;margin-bottom:22px">
+        <div class="card-header"><h3>Add New Department</h3></div>
+        <div class="alert alert-error"   id="deptErr"></div>
+        <div class="alert alert-success" id="deptSuc"></div>
+        <div class="form-group"><label>Department Name</label><input type="text" id="deptName" placeholder="e.g. Electrical Department"/></div>
+        <button class="btn btn-primary" onclick="addDept()">Add Department</button>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>All Departments</h3>
+          <button class="btn btn-outline btn-sm" onclick="loadDepts()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Department Name</th><th>Created</th><th>Action</th></tr></thead>
+            <tbody id="deptBody"></tbody>
+          </table>
+        </div>
+        <div id="emptyDept" class="empty-state" style="display:none">
+          <div class="e-icon">🏢</div><p>No departments added yet.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Assign Modal -->
+<div class="modal-overlay" id="assignModal">
+  <div class="modal">
+    <h3>Assign Responsibility</h3>
+    <p class="modal-sub" id="assignTitle"></p>
+    <div class="form-group">
+      <label>Select Maintenance Staff</label>
+      <select id="staffSelect"></select>
+    </div>
+    <p style="font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:8px">
+      Note: Once assigned, responsibility is locked to this staff member.
+    </p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('assignModal')">Cancel</button>
+      <button class="btn btn-blue"    onclick="confirmAssign()">Assign →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="/js/common.js"></script>
+<script>
+let allIssues = [], staffList = [], deptList = [], currentFilter = 'all', assigningId = null;
+
+async function init() {
+  const res = await fetch('/api/me');
+  if (!res.ok) { window.location.href = '/admin/login.html'; return; }
+  const user = await res.json();
+  if (user.role !== 'admin') { window.location.href = '/'; return; }
+  document.getElementById('userName').textContent   = user.name;
+  document.getElementById('popupName').textContent  = user.name;
+  document.getElementById('popupEmail').textContent = user.email;
+  initProfilePopup();
+  await Promise.all([loadDepts(), loadStaff(), loadIssues()]);
+}
+
+async function loadIssues() {
+  const res = await fetch('/api/issues/all');
+  allIssues = await res.json();
+  renderStats(); renderTable();
+}
+
+async function loadStaff() {
+  const res = await fetch('/api/staff');
+  staffList = await res.json();
+  renderStaffTable();
+  populateStaffDeptDropdowns();
+}
+
+async function loadDepts() {
+  const res = await fetch('/api/departments');
+  deptList  = await res.json();
+  renderDeptTable();
+  populateDeptDropdowns();
+}
+
+function populateDeptDropdowns() {
+  const sel = document.getElementById('sDept');
+  if (!sel) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select Department —</option>';
+  deptList.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id; opt.textContent = d.name;
+    sel.appendChild(opt);
+  });
+  sel.value = cur;
+}
+
+function populateStaffDeptDropdowns() {
+  staffList.forEach(s => {
+    const sel = document.getElementById('deptSel_' + s.id);
+    if (!sel) return;
+    sel.innerHTML = '<option value="">— No Dept —</option>';
+    deptList.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.id; opt.textContent = d.name;
+      if (d.id == s.dept_id) opt.selected = true;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function renderStats() {
+  const c = { Pending: 0, 'In Progress': 0, Resolved: 0 };
+  allIssues.forEach(i => c[i.status] !== undefined && c[i.status]++);
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card s-total">   <div class="s-label">Total</div>      <div class="s-value">${allIssues.length}</div></div>
+    <div class="stat-card s-pending"> <div class="s-label">Pending</div>    <div class="s-value">${c['Pending']}</div></div>
+    <div class="stat-card s-progress"><div class="s-label">In Progress</div><div class="s-value">${c['In Progress']}</div></div>
+    <div class="stat-card s-resolved"><div class="s-label">Resolved</div>   <div class="s-value">${c['Resolved']}</div></div>
+  `;
+}
+
+function renderTable() {
+  const filtered = currentFilter === 'all' ? allIssues : allIssues.filter(i => i.status === currentFilter);
+  const tbody = document.getElementById('issuesBody');
+  const empty = document.getElementById('emptyIssues');
+
+  if (!filtered.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = filtered.map((issue, idx) => {
+    // Once assigned, the button is gone — locked to that staff member
+    let actionCell;
+    if (issue.status === 'Resolved') {
+      actionCell = '<span style="color:var(--green);font-size:12px;font-weight:600">✓ Done</span>';
+    } else if (issue.assigned_to) {
+      // Already assigned — locked, no reassign
+      actionCell = `<span style="color:var(--muted);font-size:12px">Assigned</span>`;
+    } else {
+      actionCell = `<button class="btn btn-sm btn-blue" onclick="openAssign(${issue.id},'${issue.title.replace(/'/g, "\\'")}')">Assign</button>`;
+    }
+
+    return `
+      <tr>
+        <td style="color:var(--muted);font-size:12px">${idx + 1}</td>
+        <td>
+          <div style="font-weight:600">${issue.title}</div>
+          <div style="color:var(--muted);font-size:11.5px;margin-top:3px">${issue.description.substring(0, 44)}${issue.description.length > 44 ? '…' : ''}</div>
+        </td>
+        <td><span class="cat-tag">${issue.category_name}</span></td>
+        <td style="color:var(--muted2)">${issue.location}</td>
+        <td style="color:var(--muted2)">${issue.student_name}</td>
+        <td>${statusBadge(issue.status)}</td>
+        <td style="color:var(--muted2)">${issue.assigned_name || '—'}</td>
+        <td style="color:var(--muted2)">${issue.dept_name || '—'}</td>
+        <td style="color:var(--muted);font-size:12px">${fmtDate(issue.created_at)}</td>
+        <td>${actionCell}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderStaffTable() {
+  const tbody = document.getElementById('staffBody');
+  const empty = document.getElementById('emptyStaff');
+  if (!staffList.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = staffList.map((s, i) => `
+    <tr>
+      <td style="color:var(--muted)">${i + 1}</td>
+      <td style="font-weight:600">${s.name}</td>
+      <td style="color:var(--muted2)">${s.email}</td>
+      <td style="color:var(--muted2)">${s.dept_name || '—'}</td>
+      <td>
+        <div style="display:flex;gap:6px;align-items:center">
+          <select id="deptSel_${s.id}" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-family:'Plus Jakarta Sans',sans-serif;font-size:12px;outline:none">
+            <option value="">— No Dept —</option>
+            ${deptList.map(d => `<option value="${d.id}" ${d.id == s.dept_id ? 'selected' : ''}>${d.name}</option>`).join('')}
+          </select>
+          <button class="btn btn-sm btn-blue" onclick="updateStaffDept(${s.id})">Save</button>
+        </div>
+      </td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(s.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderDeptTable() {
+  const tbody = document.getElementById('deptBody');
+  const empty = document.getElementById('emptyDept');
+  if (!deptList.length) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = deptList.map((d, i) => `
+    <tr>
+      <td style="color:var(--muted)">${i + 1}</td>
+      <td style="font-weight:600">${d.name}</td>
+      <td style="color:var(--muted);font-size:12px">${fmtDate(d.created_at)}</td>
+      <td><button class="btn btn-sm btn-red" onclick="deleteDept(${d.id},'${d.name.replace(/'/g, "\\'")}')">Delete</button></td>
+    </tr>
+  `).join('');
+}
+
+async function addStaff() {
+  const name    = document.getElementById('sName').value.trim();
+  const email   = document.getElementById('sEmail').value.trim();
+  const pass    = document.getElementById('sPass').value;
+  const dept_id = document.getElementById('sDept').value;
+  const err = document.getElementById('staffErr');
+  const suc = document.getElementById('staffSuc');
+  err.style.display = 'none'; suc.style.display = 'none';
+
+  if (!name || !email || !pass) { err.textContent = 'Please fill name, email and password.'; err.style.display = 'block'; return; }
+  if (pass.length < 6) { err.textContent = 'Password must be at least 6 characters.'; err.style.display = 'block'; return; }
+
+  const res  = await fetch('/api/staff/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password: pass, dept_id: dept_id || null })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    suc.textContent = `Staff member "${name}" added successfully!`; suc.style.display = 'block';
+    document.getElementById('sName').value  = '';
+    document.getElementById('sEmail').value = '';
+    document.getElementById('sPass').value  = '';
+    document.getElementById('sDept').value  = '';
+    await loadStaff();
+    showToast('Staff member added!');
+  } else {
+    err.textContent = data.error || 'Failed to add staff.'; err.style.display = 'block';
+  }
+}
+
+async function updateStaffDept(staffId) {
+  const sel     = document.getElementById('deptSel_' + staffId);
+  const dept_id = sel ? sel.value : null;
+  const res  = await fetch(`/api/staff/${staffId}/department`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dept_id: dept_id || null })
+  });
+  const data = await res.json();
+  if (data.success) { showToast('Department updated!'); await loadStaff(); }
+}
+
+async function addDept() {
+  const name = document.getElementById('deptName').value.trim();
+  const err  = document.getElementById('deptErr');
+  const suc  = document.getElementById('deptSuc');
+  err.style.display = 'none'; suc.style.display = 'none';
+
+  if (!name) { err.textContent = 'Please enter a department name.'; err.style.display = 'block'; return; }
+
+  const res  = await fetch('/api/departments/add', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json();
+
+  if (data.success) {
+    suc.textContent = `Department "${name}" added!`; suc.style.display = 'block';
+    document.getElementById('deptName').value = '';
+    await loadDepts();
+    showToast('Department added!');
+  } else {
+    err.textContent = data.error || 'Failed.'; err.style.display = 'block';
+  }
+}
+
+async function deleteDept(id, name) {
+  if (!confirm(`Delete department "${name}"? Staff assigned to it will be unassigned.`)) return;
+  const res  = await fetch(`/api/departments/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (data.success) { showToast('Department deleted.'); await Promise.all([loadDepts(), loadStaff()]); }
+}
+
+function setFilter(filter, el) {
+  currentFilter = filter;
+  ['view-issues', 'view-staff', 'view-dept'].forEach(id => {
+    document.getElementById(id).style.display = id === 'view-issues' ? 'block' : 'none';
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  const titles = { all: 'All Issues', Pending: 'Pending Issues', 'In Progress': 'In Progress', Resolved: 'Resolved Issues' };
+  document.getElementById('tableTitle').textContent = titles[filter] || 'Issues';
+  renderTable();
+}
+
+function showStaffView(el) {
+  document.getElementById('view-issues').style.display = 'none';
+  document.getElementById('view-staff').style.display  = 'block';
+  document.getElementById('view-dept').style.display   = 'none';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  loadStaff();
+}
+
+function showDeptView(el) {
+  document.getElementById('view-issues').style.display = 'none';
+  document.getElementById('view-staff').style.display  = 'none';
+  document.getElementById('view-dept').style.display   = 'block';
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  el.classList.add('active');
+  loadDepts();
+}
+
+function openAssign(id, title) {
+  assigningId = id;
+  document.getElementById('assignTitle').textContent = `Issue: ${title}`;
+  const sel = document.getElementById('staffSelect');
+  if (!staffList.length) {
+    sel.innerHTML = '<option>No staff available — add staff first</option>';
+  } else {
+    sel.innerHTML = staffList.map(s =>
+      `<option value="${s.id}">${s.name}${s.dept_name ? ' (' + s.dept_name + ')' : ''}</option>`
+    ).join('');
+  }
+  document.getElementById('assignModal').classList.add('open');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('open'); assigningId = null; }
+
+async function confirmAssign() {
+  if (!staffList.length) { closeModal('assignModal'); showToast('Add staff members first!', 'error'); return; }
+  const staffId = document.getElementById('staffSelect').value;
+  const res  = await fetch(`/api/issues/${assigningId}/assign`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ staffId })
+  });
+  const data = await res.json();
+  if (data.success) { closeModal('assignModal'); showToast('Issue assigned!'); await loadIssues(); }
+}
+
+init();
+</script>
+</body>
+</html>
